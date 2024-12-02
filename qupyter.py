@@ -7,10 +7,13 @@ from time import sleep
 from PyQt5.QtGui import QFont, QTextCharFormat, QColor, QSyntaxHighlighter, QKeySequence, QTextCursor
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QHBoxLayout, QVBoxLayout,
                              QWidget, QScrollArea, QTextEdit, QLabel, QPushButton, QFileDialog, QSplitter)
-from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QThread
 
 from qtconsole.inprocess import QtInProcessKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
+
+from executor import Executor
+
 
 class PythonSyntaxHighlighter(QSyntaxHighlighter):
     def __init__(self, document):
@@ -152,7 +155,8 @@ class MainWindow(QMainWindow):
                     self.helper_layout.addWidget(self.edits[-1])
 
     def run_cell(self, edit):
-        self.execute_cell(edit.toPlainText())
+        self.queue.put(edit.toPlainText())
+        #self.execute_cell(edit.toPlainText())
 
 
     def __init__(self):
@@ -202,48 +206,30 @@ class MainWindow(QMainWindow):
         self.jupyter_widget.kernel_manager = QtInProcessKernelManager()
         self.jupyter_widget.kernel_manager.start_kernel()
         self.jupyter_widget.kernel_client = self.jupyter_widget.kernel_manager.client()
-        self.jupyter_widget.kernel_client.iopub_channel.message_received.connect(self.handle_message)
-
         self.jupyter_widget.kernel_client.start_channels()
 
         splitter.addWidget(self.jupyter_widget)
-
-        # Set the central widget
         self.setCentralWidget(splitter)
+
         self.queue = Queue()
-        self.error = False
+        self.executor = Executor(self.queue, self.jupyter_widget)
+        self.executor.run_code.connect(self.execute)
+        self.executor.start()
+
         self.open("example.ipynb")
+
         QApplication.processEvents()
         splitter.setSizes([800, 800])
 
+
     def clicked(self):
         for edit in [e for e in self.edits if isinstance(e, Code)]:
-            self.execute_cell(edit.toPlainText())
+            self.queue.put(edit.toPlainText())
 
-    def execute_cell(self, text):
-
+    def execute(self, text):
         self.jupyter_widget.execute(text, interactive=False)
         return
 
-        for line in text.splitlines():
-            if self.error:
-                print("Stopping before executing", line)
-                self.error = False
-                return
-            line = line.rstrip()
-            if line.endswith(";"):
-                line = line[:-1]
-                self.jupyter_widget.kernel_client.execute(line, silent=True)
-            else:
-                self.jupyter_widget.execute(line, interactive=False)
-            QApplication.processEvents()
-
-    def handle_message(self, msg):
-        print(msg["msg_type"] )
-        self.queue.put(msg)
-        if msg["msg_type"] == "error":
-            print("fuckj")
-            self.error = True
 
 def main():
     app = QApplication(sys.argv)
