@@ -6,7 +6,8 @@ from time import sleep
 
 from PyQt5.QtGui import QFont, QTextCharFormat, QColor, QSyntaxHighlighter, QKeySequence, QTextCursor
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QHBoxLayout, QVBoxLayout,
-                             QWidget, QScrollArea, QTextEdit, QLabel, QPushButton, QFileDialog, QSplitter)
+                             QWidget, QScrollArea, QTextEdit, QLabel, QPushButton, QFileDialog, QSplitter, QTreeWidget,
+                             QTreeWidgetItem)
 from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal, QThread
 
 from qtconsole.inprocess import QtInProcessKernelManager
@@ -185,6 +186,9 @@ class MainWindow(QMainWindow):
         helper.setLayout(self.helper_layout)
         self.play = QPushButton("Play")
         self.helper_layout.addWidget(self.play)
+        self.tree = QTreeWidget()
+
+        self.helper_layout.addWidget(self.tree)
         self.edits = []
         # for i in range(10):
         #     self.edits.append(QTextEdit())
