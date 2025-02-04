@@ -220,7 +220,7 @@ class MainWindow(QMainWindow):
         self.executor.run_code.connect(self.execute)
         self.executor.start()
 
-        self.open("example.ipynb")
+        self.open("../coder/slides/Practica_2_Fundamentos_de_Programacion [vacio].ipynb")
 
         QApplication.processEvents()
         splitter.setSizes([800, 800])
