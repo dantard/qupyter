@@ -1,3 +1,4 @@
+import time
 from queue import Queue
 from time import sleep
 
@@ -6,7 +7,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 class Executor(QThread):
 
-    run_code = pyqtSignal(str)
+    run_code = pyqtSignal(str, bool)
 
     def __init__(self, queue, jupyter_widget):
         super().__init__()
@@ -18,27 +19,17 @@ class Executor(QThread):
 
     def run(self):
         while True:
-            if self.status == "execute":
-                item = self.queue.get()
-                print("Executing")
+            status = self.messages.get()
+
+            if status == "idle":
+                item, hidden = self.queue.get()
                 self.empty_queue(self.messages)
-                self.run_code.emit(item)
-                self.status = "launched"
-            elif self.status == "launched":
-                print("launched")
-                message = self.messages.get()
-                print("Got message", message)
-                if message == "execute_input":
-                    self.status = "waiting_result"
-            elif self.status == "waiting_result":
-                print("waiting_result")
-                message = self.messages.get()
-                print("Got message", message)
-                if message == "idle":
-                    self.status = "execute"
-                elif message == "error":
-                    self.empty_queue(self.queue)
-                    self.status = "execute"
+                self.run_code.emit(item, hidden)
+            elif status == "error":
+                self.empty_queue(self.queue)
+                self.run_code.emit("# QP_ERROR", True)
+            elif status == "busy":
+                time.sleep(0.01)
 
     @staticmethod
     def empty_queue(queue):
@@ -46,7 +37,10 @@ class Executor(QThread):
             queue.get()
 
     def handle_message(self, msg):
-        if msg["msg_type"] in ["execute_input","error"]:
+        #print("msg", msg)
+        if msg["msg_type"] in ["error"]:
+            print("putting", msg["msg_type"])
             self.messages.put(msg["msg_type"])
         elif msg["msg_type"] == "status":
+            print("putting", msg["content"]["execution_state"])
             self.messages.put(msg["content"]["execution_state"])
